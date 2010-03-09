@@ -65,13 +65,15 @@ HISTORY
             by fread() to recognize partial blocks instead.
 05/02/05  - Allocating large arrays on heap instead of stack so that
             gcc can handle larger blocks.
+11/03/05  - Sort algorithm is now similar to the "faster method" in the
+            Burrows and Wheeler paper.
 
 TODO
 ----
-- Try faster sort methods discussed in "A Block-sorting Lossless Data
-  Compression Algorithm"
 - Use "known" efficient Move-To-Front algorithm
 - Integrate with compression algorithm
+- Investigate suffix tree based sorting solutions
+  - There are several papers claiming speed improvements
 
 AUTHOR
 ------

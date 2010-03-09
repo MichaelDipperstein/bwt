@@ -13,8 +13,13 @@
 ****************************************************************************
 *   UPDATES
 *
-*   $Id: bwxform.c,v 1.4 2005/05/02 13:33:41 michael Exp $
+*   $Id: bwxform.c,v 1.5 2005/11/03 15:01:46 michael Exp $
 *   $Log: bwxform.c,v $
+*   Revision 1.5  2005/11/03 15:01:46  michael
+*   Speed up block sorting using the algorithm suggested by the
+*   Burrows-Wheeler paper.  Radix sort all rotations by the first
+*   two charcters before employing quicksort.
+*
 *   Revision 1.4  2005/05/02 13:33:41  michael
 *   Allocate large arrays on heap instead of stack so that gcc builds code
 *   that can handle larger blocks.
@@ -76,8 +81,18 @@
 /***************************************************************************
 *                            TYPE DEFINITIONS
 ***************************************************************************/
-unsigned char block[BLOCK_SIZE];
-size_t blockSize;
+unsigned char block[BLOCK_SIZE];        /* block being (un)transformed */
+size_t blockSize;                       /* actual size of block */
+
+/* counters and offsets used for radix sorting with characters */
+unsigned int counters[256];
+unsigned int offsetTable[256];
+
+/***************************************************************************
+*                                 MACROS
+***************************************************************************/
+/* wraps array index within array bounds (assumes value < 2 * limit) */
+#define Wrap(value, limit)      (((value) < (limit)) ? (value) : ((value) - (limit)))
 
 /***************************************************************************
 *                               PROTOTYPES
@@ -91,11 +106,13 @@ void UndoMTF(unsigned char *last, int length);
 ***************************************************************************/
 
 /***************************************************************************
-*   Function   : CompareRotated
+*   Function   : ComparePresorted
 *   Description: This comparison function is designed for use with qsort
 *                and "block", a global array of "blockSize" unsigned chars.
 *                It compares two strings in "block" starting at indices
 *                s1 and s2 and ending at indices s1 - 1 and s2 - 1.
+*                The strings are assumed to be presorted so that first two
+*                characters are known to be matching.
 *   Parameters : s1 - The starting index of a string in block
 *                s2 - The starting index of a string in block
 *   Effects    : NONE
@@ -103,7 +120,7 @@ void UndoMTF(unsigned char *last, int length);
 *                0 if string s1 == string s2
 *                < 0 if string s1 < string s2
 ***************************************************************************/
-int CompareRotated(const void *s1, const void *s2)
+int ComparePresorted(const void *s1, const void *s2)
 {
     int offset1, offset2;
     int i;
@@ -112,11 +129,15 @@ int CompareRotated(const void *s1, const void *s2)
     offset1 = *((int *)s1);
     offset2 = *((int *)s2);
 
-    /* compare 1 character at a time until difference or end of block */
-    for(i = 0; i < blockSize; i++)
+    /***********************************************************************
+    * Compare 1 character at a time until there's difference or the end of
+    * the block is reached.  Since we're only sorting strings that already
+    * match at the first two characters, start with the third character.
+    ***********************************************************************/
+    for(i = 2; i < blockSize; i++)
     {
-        result = (int)*(block + ((offset1 + i) % blockSize)) -
-            (int)*(block + ((offset2 + i) % blockSize));
+        result = (int)block[Wrap((offset1 + i), blockSize)] -
+            (int)block[Wrap((offset2 + i), blockSize)];
 
         if (result != 0)
         {
@@ -126,22 +147,6 @@ int CompareRotated(const void *s1, const void *s2)
 
     /* strings are identical */
     return 0;
-}
-
-/***************************************************************************
-*   Function   : CompareUnsignedChar
-*   Description: This comparison function is designed for use with qsort,
-*                compares two unsigned chars pointed to by c1 and c2.
-*   Parameters : c1 - an unsigned char
-*                c2 - an unsigned char
-*   Effects    : NONE
-*   Returned   : > 0 if c1 > c2
-*                0 if c1 == c2
-*                < 0 if c1 < c2
-***************************************************************************/
-int CompareUnsignedChar(const void *c1, const void *c2)
-{
-   return ((int)(*(unsigned char *)c1) - (int)(*(unsigned char *)c2));
 }
 
 /***************************************************************************
@@ -163,9 +168,10 @@ int CompareUnsignedChar(const void *c1, const void *c2)
 ***************************************************************************/
 int BWXformFile(char *inFile, char *outFile, char mtf)
 {
-    int i;
+    int i, j, k;
     FILE *fpIn, *fpOut;
-    int *rotationIdx;               /* index of first char in rotation */
+    unsigned int *rotationIdx;      /* index of first char in rotation */
+    unsigned int *v;                /* index of radix sorted charaters */
     int s0Idx;                      /* index of S0 in rotations (I) */
     unsigned char *last;            /* last characters from sorted rotations */
 
@@ -174,11 +180,20 @@ int BWXformFile(char *inFile, char *outFile, char mtf)
     * code that throws a Segmentation fault when the large arrays are
     * allocated on the stack.
     ***********************************************************************/
-    rotationIdx = (int *)malloc(BLOCK_SIZE * sizeof(int));
-    
+    rotationIdx = (unsigned int *)malloc(BLOCK_SIZE * sizeof(unsigned int));
+
     if (NULL == rotationIdx)
     {
         perror("Allocating array of rotation indices");
+        return FALSE;
+    }
+
+    v = (unsigned int *)malloc(BLOCK_SIZE * sizeof(unsigned int));
+
+    if (v == rotationIdx)
+    {
+        perror("Allocating array of sort indices");
+        free(rotationIdx);
         return FALSE;
     }
 
@@ -188,6 +203,7 @@ int BWXformFile(char *inFile, char *outFile, char mtf)
     {
         perror("Allocating array of last characters");
         free(rotationIdx);
+        free(v);
         return FALSE;
     }
 
@@ -215,14 +231,91 @@ int BWXformFile(char *inFile, char *outFile, char mtf)
     while((blockSize = fread(block, sizeof(unsigned char), BLOCK_SIZE, fpIn))
         != 0)
     {
-        /* initialize rotation indices sequentially */
+        /*******************************************************************
+        * Sort the rotated strings in the block.  A radix sort is performed
+        * on the first to characters of all the rotated strings (2nd
+        * character then 1st).  All rotated strings with matching initial
+        * characters are then quicksorted. - Q4..Q7
+        *******************************************************************/
+
+        /*** radix sort on second character in rotation ***/
+
+        /* count number of characters for radix sort */
+        memset(counters, 0, 256 * sizeof(int));
         for (i = 0; i < blockSize; i++)
         {
-            rotationIdx[i] = i;
+            counters[block[i]]++;
         }
 
-        /* sort rotations lexigraphically - C1 */
-        qsort(rotationIdx, blockSize, sizeof(int), CompareRotated);
+        offsetTable[0] = 0;
+
+        for(i = 1; i < 256; i++)
+        {
+            /* determine number of values before those sorted under i */
+            offsetTable[i] = offsetTable[i - 1] + counters[i - 1];
+        }
+
+        /* sort on 2nd character */
+        for (i = 0; i < blockSize - 1; i++)
+        {
+            j = block[i + 1];
+            v[offsetTable[j]] = i;
+            offsetTable[j] = offsetTable[j] + 1;
+        }
+
+        /* handle wrap around for string starting at end of block */
+        j = block[0];
+        v[offsetTable[j]] = i;
+        offsetTable[0] = 0;
+
+        /*** radix sort on first character in rotation ***/
+
+        for(i = 1; i < 256; i++)
+        {
+            /* determine number of values before those sorted under i */
+            offsetTable[i] = offsetTable[i - 1] + counters[i - 1];
+        }
+
+        for (i = 0; i < blockSize; i++)
+        {
+            j = v[i];
+            j = block[j];
+            rotationIdx[offsetTable[j]] = v[i];
+            offsetTable[j] = offsetTable[j] + 1;
+        }
+
+        /*******************************************************************
+        * now rotationIdx contains the sort order of all strings sorted
+        * by their first 2 characters.  Use qsort to sort the strings
+        * that have their first two characters matching.
+        *******************************************************************/
+        for (i = 0, k = 0; (i <= UCHAR_MAX) && (k < (blockSize - 1)); i++)
+        {
+            for (j = 0; (j <= UCHAR_MAX) && (k < (blockSize - 1)); j++)
+            {
+                int first = k;
+
+                /* count strings starting with ij */
+                while ((i == block[rotationIdx[k]]) &&
+                    (j == block[Wrap(rotationIdx[k] + 1,  blockSize)]))
+                {
+                    k++;
+
+                    if (k == blockSize)
+                    {
+                        /* we've searched the whole block */
+                        break;
+                    }
+                }
+
+                if (k - first > 1)
+                {
+                    /* there are at least 2 strings staring with ij, sort them */
+                    qsort(&rotationIdx[first], k - first, sizeof(int),
+                        ComparePresorted);
+                }
+            }
+        }
 
         /* find last characters of rotations (L) - C2 */
         s0Idx = 0;
@@ -254,6 +347,7 @@ int BWXformFile(char *inFile, char *outFile, char mtf)
 
     /* clean up */
     free(rotationIdx);
+    free(v);
     free(last);
     fclose(fpIn);
     fclose(fpOut);
@@ -288,7 +382,7 @@ void DoMTF(unsigned char *last, int length)
     * allocated on the stack.
     ***********************************************************************/
     encoded = (unsigned char *)malloc(BLOCK_SIZE * sizeof(unsigned char));
-    
+
     if (NULL == encoded)
     {
         perror("Allocating array to store MTF encoding");
@@ -368,7 +462,7 @@ int BWReverseXformFile(char *inFile, char *outFile, char mtf)
     * allocated on the stack.
     ***********************************************************************/
     pred = (int *)malloc(BLOCK_SIZE * sizeof(int));
-    
+
     if (NULL == pred)
     {
         perror("Allocating array of matching predicessors");
@@ -491,7 +585,7 @@ void UndoMTF(unsigned char *last, int length)
     * allocated on the stack.
     ***********************************************************************/
     encoded = (unsigned char *)malloc(BLOCK_SIZE * sizeof(unsigned char));
-    
+
     if (NULL == encoded)
     {
         perror("Allocating array to store MTF encoding");
