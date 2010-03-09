@@ -16,11 +16,11 @@ FILES
 -----
 bwxform.c       - Library of Burrows-Wheeler transform (BWT) routines.
 bwxform.h       - Header containing prototypes for library functions.
-COPYING         - Rules for copying and distributing LGPL software
-getopt.c        - LGPL version of getopt source from GNU project
-getopt.h        - LGPL version of getopt headers from GNU project
-LICENSE         - GNU Lesser General Public License
+COPYING         - Rules for copying and distributing GPL software
+COPYING.LESSER  - Rules for copying and distributing LGPL software
 Makefile        - makefile for this project (assumes gcc compiler and GNU make)
+optlist.c       - Source code for GetOptlist function and supporting functions
+optlist.h       - Header file to be included by code using the optlist library
 README          - this file
 sample.c        - Demonstration of how to use BWT library functions
 
@@ -67,6 +67,8 @@ HISTORY
             gcc can handle larger blocks.
 11/03/05  - Sort algorithm is now similar to the "faster method" in the
             Burrows and Wheeler paper.
+08/29/07  - Explicitly licensed under LGPL version 3.
+          - Replaces getopt() with optlist library
 
 TODO
 ----
