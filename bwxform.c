@@ -13,15 +13,29 @@
 ****************************************************************************
 *   UPDATES
 *
-*   $Id: bwxform.c,v 1.1.1.1 2004/08/23 04:34:18 michael Exp $
+*   $Id: bwxform.c,v 1.4 2005/05/02 13:33:41 michael Exp $
 *   $Log: bwxform.c,v $
+*   Revision 1.4  2005/05/02 13:33:41  michael
+*   Allocate large arrays on heap instead of stack so that gcc builds code
+*   that can handle larger blocks.
+*
+*   Update e-mail address
+*
+*   Revision 1.3  2004/08/27 01:24:16  michael
+*   Write S[0] index (I) before transformed block to aviod having to
+*   find I in a partial block.
+*
+*   Revision 1.2  2004/08/26 06:16:08  michael
+*   Handle partial blocks without need to store block size.  Use size
+*   returned by fread() to indicate smaller than standard block.
+*
 *   Revision 1.1.1.1  2004/08/23 04:34:18  michael
 *   Burrows-Wheeler Transform
 *
 ****************************************************************************
 *
 * bwxform: An ANSI C Burrows-Wheeler Transform/Reverse Transform Routines
-* Copyright (C) 2004 by Michael Dipperstein (mdipper@cs.ucsb.edu)
+* Copyright (C) 2004 by Michael Dipperstein (mdipper@alumni.engr.ucsb.edu)
 *
 * This library is free software; you can redistribute it and/or
 * modify it under the terms of the GNU Lesser General Public
@@ -54,7 +68,7 @@
 #define BLOCK_SIZE  4096        /* size of blocks */
 
 #if BLOCK_SIZE > INT_MAX
-#error BLOCK_SIZE must be < INT_MAX and maximum size_t
+#error BLOCK_SIZE must be <= INT_MAX and maximum size_t
 #endif
 
 /* NOTE: Need to find a way to check for maximum size_t */
@@ -151,9 +165,31 @@ int BWXformFile(char *inFile, char *outFile, char mtf)
 {
     int i;
     FILE *fpIn, *fpOut;
-    int rotationIdx[BLOCK_SIZE];    /* index of first char in rotation */
+    int *rotationIdx;               /* index of first char in rotation */
     int s0Idx;                      /* index of S0 in rotations (I) */
-    unsigned char last[BLOCK_SIZE]; /* last characters from sorted rotations */
+    unsigned char *last;            /* last characters from sorted rotations */
+
+    /***********************************************************************
+    * BLOCK_SIZE arrays are allocated on the heap, because gcc generates
+    * code that throws a Segmentation fault when the large arrays are
+    * allocated on the stack.
+    ***********************************************************************/
+    rotationIdx = (int *)malloc(BLOCK_SIZE * sizeof(int));
+    
+    if (NULL == rotationIdx)
+    {
+        perror("Allocating array of rotation indices");
+        return FALSE;
+    }
+
+    last = (unsigned char *)malloc(BLOCK_SIZE * sizeof(unsigned char));
+
+    if (NULL == last)
+    {
+        perror("Allocating array of last characters");
+        free(rotationIdx);
+        return FALSE;
+    }
 
     /* open input and output files */
     if ((fpIn = fopen(inFile, "rb")) == NULL)
@@ -176,10 +212,9 @@ int BWXformFile(char *inFile, char *outFile, char mtf)
         }
     }
 
-    while((blockSize = fread(block, sizeof(unsigned char), BLOCK_SIZE, fpIn)) != 0)
+    while((blockSize = fread(block, sizeof(unsigned char), BLOCK_SIZE, fpIn))
+        != 0)
     {
-        fwrite(&blockSize, sizeof(size_t), 1, fpOut);
-
         /* initialize rotation indices sequentially */
         for (i = 0; i < blockSize; i++)
         {
@@ -210,13 +245,16 @@ int BWXformFile(char *inFile, char *outFile, char mtf)
             DoMTF(last, blockSize);
         }
 
+        /* write index of end of unrotated string (I) */
+        fwrite(&s0Idx, sizeof(int), 1, fpOut);
+
         /* write out last characters of rotations (L) */
         fwrite(last, sizeof(unsigned char), blockSize, fpOut);
-
-        /* finally output index of end of unrotated string */
-        fwrite(&s0Idx, sizeof(int), 1, fpOut);
     }
 
+    /* clean up */
+    free(rotationIdx);
+    free(last);
     fclose(fpIn);
     fclose(fpOut);
     return TRUE;
@@ -241,8 +279,21 @@ int BWXformFile(char *inFile, char *outFile, char mtf)
 void DoMTF(unsigned char *last, int length)
 {
     unsigned char list[UCHAR_MAX + 1];      /* list of characters (Y) */
-    unsigned char encoded[BLOCK_SIZE];      /* mtf encoded block (R) */
+    unsigned char *encoded;                 /* mtf encoded block (R) */
     int i, j;
+
+    /***********************************************************************
+    * BLOCK_SIZE arrays are allocated on the heap, because gcc generates
+    * code that throws a Segmentation fault when the large arrays are
+    * allocated on the stack.
+    ***********************************************************************/
+    encoded = (unsigned char *)malloc(BLOCK_SIZE * sizeof(unsigned char));
+    
+    if (NULL == encoded)
+    {
+        perror("Allocating array to store MTF encoding");
+        return;
+    }
 
     /* start with alphabetically sorted list of characters */
     for(i = 0; i <= UCHAR_MAX; i++)
@@ -278,6 +329,7 @@ void DoMTF(unsigned char *last, int length)
 
     /* copy mtf encoded vector of last characters (R) to input */
     memcpy((void *)last, (void *)encoded, sizeof(unsigned char) * length);
+    free(encoded);
 
     return;
 }
@@ -304,11 +356,33 @@ int BWReverseXformFile(char *inFile, char *outFile, char mtf)
 {
     FILE *fpIn, *fpOut;
     int i, j, sum;
-    int count[UCHAR_MAX + 1],   /* count[i] = # of chars in block <= i */
-        pred[BLOCK_SIZE];       /* pred[i] = # of times block[i] appears in
+    int count[UCHAR_MAX + 1];   /* count[i] = # of chars in block <= i */
+    int *pred;                  /* pred[i] = # of times block[i] appears in
                                    block[0 .. i - 1] */
-    unsigned char unrotated[BLOCK_SIZE];    /* original block */
+    unsigned char *unrotated;   /* original block */
     int s0Idx;                  /* index of S0 in rotations (I) */
+
+    /***********************************************************************
+    * BLOCK_SIZE arrays are allocated on the heap, because gcc generates
+    * code that throws a Segmentation fault when the large arrays are
+    * allocated on the stack.
+    ***********************************************************************/
+    pred = (int *)malloc(BLOCK_SIZE * sizeof(int));
+    
+    if (NULL == pred)
+    {
+        perror("Allocating array of matching predicessors");
+        return FALSE;
+    }
+
+    unrotated = (unsigned char *)malloc(BLOCK_SIZE * sizeof(unsigned char));
+
+    if (NULL == unrotated)
+    {
+        perror("Allocating array to store unrotated block");
+        free(pred);
+        return FALSE;
+    }
 
     /* open input and output files */
     if ((fpIn = fopen(inFile, "rb")) == NULL)
@@ -331,24 +405,16 @@ int BWReverseXformFile(char *inFile, char *outFile, char mtf)
         }
     }
 
-    while (fread(&i, sizeof(size_t), 1, fpIn) != 0)
+    while(fread(&s0Idx, sizeof(int), 1, fpIn) != 0)
     {
-        blockSize = fread(block, sizeof(unsigned char), i, fpIn);
-        if (blockSize != i)
-        {
-            fclose(fpIn);
-            fclose(fpOut);
-            fprintf(stderr, "Error: Unexpected end of input.\n");
-            return FALSE;
-        }
-        fread(&s0Idx, sizeof(int), 1, fpIn);
+        blockSize = fread(block, sizeof(unsigned char), BLOCK_SIZE, fpIn);
 
         if(mtf)
         {
             UndoMTF(block, blockSize);
         }
 
-        /* based on pseudo code from section 4.2 (D1 and D2) follows */
+        /* code based on pseudo code from section 4.2 (D1 and D2) follows */
         for(i = 0; i <= UCHAR_MAX; i++)
         {
             count[i] = 0;
@@ -377,7 +443,7 @@ int BWReverseXformFile(char *inFile, char *outFile, char mtf)
             sum += j;
         }
 
-        /* construct the initial unrotated string */
+        /* construct the initial unrotated string (S[0]) */
         i = s0Idx;
         for(j = blockSize - 1; j >= 0; j--)
         {
@@ -388,6 +454,9 @@ int BWReverseXformFile(char *inFile, char *outFile, char mtf)
         fwrite(unrotated, sizeof(unsigned char), blockSize, fpOut);
     }
 
+    /* clean up */
+    free(pred);
+    free(unrotated);
     fclose(fpIn);
     fclose(fpOut);
     return TRUE;
@@ -413,8 +482,21 @@ int BWReverseXformFile(char *inFile, char *outFile, char mtf)
 void UndoMTF(unsigned char *last, int length)
 {
     unsigned char list[UCHAR_MAX + 1];      /* list of characters (Y) */
-    unsigned char encoded[BLOCK_SIZE];      /* mtf encoded block (R) */
+    unsigned char *encoded;                 /* mtf encoded block (R) */
     int i, j;
+
+    /***********************************************************************
+    * BLOCK_SIZE arrays are allocated on the heap, because gcc generates
+    * code that throws a Segmentation fault when the large arrays are
+    * allocated on the stack.
+    ***********************************************************************/
+    encoded = (unsigned char *)malloc(BLOCK_SIZE * sizeof(unsigned char));
+    
+    if (NULL == encoded)
+    {
+        perror("Allocating array to store MTF encoding");
+        return;
+    }
 
     /* copy last into encoded */
     memcpy((void *)encoded, (void *)last, sizeof(unsigned char) * length);
@@ -439,5 +521,6 @@ void UndoMTF(unsigned char *last, int length)
         list[0] = last[i];
     }
 
+    free(encoded);
     return;
 }

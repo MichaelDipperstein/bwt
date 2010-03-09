@@ -9,15 +9,18 @@
 ****************************************************************************
 *   UPDATES
 *
-*   $Id: sample.c,v 1.1.1.1 2004/08/23 04:34:18 michael Exp $
+*   $Id: sample.c,v 1.2 2005/05/02 13:35:49 michael Exp $
 *   $Log: sample.c,v $
+*   Revision 1.2  2005/05/02 13:35:49  michael
+*   Update e-mail address.
+*
 *   Revision 1.1.1.1  2004/08/23 04:34:18  michael
 *   Burrows-Wheeler Transform
 *
 ****************************************************************************
 *
 * SAMPLE: Sample usage of Burrows-Wheeler transform library
-* Copyright (C) 2004 by Michael Dipperstein (mdipper@cs.ucsb.edu)
+* Copyright (C) 2004 by Michael Dipperstein (mdipper@alumni.engr.ucsb.edu)
 *
 * This library is free software; you can redistribute it and/or
 * modify it under the terms of the GNU Lesser General Public
