@@ -1,0 +1,72 @@
+DESCRIPTION
+-----------
+This archive contains a simple and readable ANSI C implementation of the
+Burrows-Wheeler transformation (BWT) and its reverse transformation.  The
+code for this implementation is derived directly from  "A Block-sorting
+Lossless Data Compression Algorithm" by M. Burrows and D.J. Wheeler.
+
+A PDF copy of the document may be found at:
+ftp://gatekeeper.research.compaq.com/pub/DEC/SRC/research-reports/SRC-124.pdf
+
+More information on Burrows-Wheeler Transform may be found at:
+http://www.datacompression.info/BWT.shtml
+
+FILES
+-----
+bwxform.c       - Library of Burrows-Wheeler transform (BWT) routines.
+bwxform.h       - Header containing prototypes for library functions.
+COPYING         - Rules for copying and distributing LGPL software
+getopt.c        - LGPL version of getopt source from GNU project
+getopt.h        - LGPL version of getopt headers from GNU project
+LICENSE         - GNU Lesser General Public License
+Makefile        - makefile for this project (assumes gcc compiler and GNU make)
+README          - this file
+sample.c        - Demonstration of how to use BWT library functions
+
+BUILDING
+--------
+To build these files with GNU make and gcc, simply enter "make" from the
+command line.  The executable will be named sample (or sample.exe).
+
+USAGE
+-----
+Usage: sample <options>
+
+options:
+  -c : Encode input file to output file.
+  -d : Decode input file to output file.
+  -m : Perform the Move-to-Front coding.
+  -i <filename> : Name of input file.
+  -o <filename> : Name of output file.
+  -h|?  : Print out command line options.
+
+-c      Generate a probability range list for the specified input file
+        (see -i) then use arithmetic coding compresses the file using the
+        range list to the specified output file (see -o).
+
+-d      Decompresses the specified input file (see -i) writing the results to
+        the specified output file (see -o).  Only files compressed by this
+        program may be decompressed.
+
+-m      Perform move to front encoding/decoding on each block.
+
+-i <filename>   The name of the input file.  There is no valid usage of this
+                program without a specified input file.
+
+-o <filename>   The name of the output file.  If no file is specified, stdout
+                will be used.  NOTE: Sending compressed output to stdout may
+                produce undesirable results.
+
+HISTORY
+-------
+08/20/04  - Initial Release
+
+TODO
+----
+- Try faster sort methods discussed in "A Block-sorting Lossless Data
+  Compression Algorithm"
+- Integrate with compression algorithm
+
+AUTHOR
+------
+Michael Dipperstein (mdipper@cs.ucsb.edu)
