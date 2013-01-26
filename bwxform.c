@@ -86,6 +86,10 @@
 /***************************************************************************
 *                            TYPE DEFINITIONS
 ***************************************************************************/
+
+/***************************************************************************
+*                            GLOBAL VARIABLES
+***************************************************************************/
 unsigned char block[BLOCK_SIZE];        /* block being (un)transformed */
 size_t blockSize;                       /* actual size of block */
 
@@ -128,7 +132,7 @@ void UndoMTF(unsigned char *last, int length);
 int ComparePresorted(const void *s1, const void *s2)
 {
     int offset1, offset2;
-    int i;
+    unsigned int i;
     int result;
 
     offset1 = *((int *)s1);
@@ -173,7 +177,7 @@ int ComparePresorted(const void *s1, const void *s2)
 ***************************************************************************/
 int BWXformFile(char *inFile, char *outFile, char mtf)
 {
-    int i, j, k;
+    unsigned int i, j, k;
     FILE *fpIn, *fpOut;
     unsigned int *rotationIdx;      /* index of first char in rotation */
     unsigned int *v;                /* index of radix sorted charaters */
@@ -454,7 +458,7 @@ void DoMTF(unsigned char *last, int length)
 int BWReverseXformFile(char *inFile, char *outFile, char mtf)
 {
     FILE *fpIn, *fpOut;
-    int i, j, sum;
+    unsigned int i, j, sum;
     int count[UCHAR_MAX + 1];   /* count[i] = # of chars in block <= i */
     int *pred;                  /* pred[i] = # of times block[i] appears in
                                    block[0 .. i - 1] */
@@ -544,9 +548,9 @@ int BWReverseXformFile(char *inFile, char *outFile, char mtf)
 
         /* construct the initial unrotated string (S[0]) */
         i = s0Idx;
-        for(j = blockSize - 1; j >= 0; j--)
+        for(j = blockSize; j > 0; j--)
         {
-            unrotated[j] = block[i];
+            unrotated[j - 1] = block[i];
             i = pred[i] + count[block[i]];
         }
 
