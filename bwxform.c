@@ -159,15 +159,15 @@ int ComparePresorted(const void *s1, const void *s2)
 }
 
 /***************************************************************************
-*   Function   : BWXformFile
+*   Function   : BWXform
 *   Description: This function performs a Burrows-Wheeler transformation
 *                on a file (with optional move to front) and writes the
 *                resulting data to the specified output file.  Comments in
 *                this function indicate corresponding variables, labels,
 *                and sections in "A Block-sorting Lossless Data Compression
 *                Algorithm" by M. Burrows and D.J. Wheeler.
-*   Parameters : inFile - Name of file to transform
-*                outFile - Name of file to write transformed output to
+*   Parameters : fpIn - FILE pointer to file to transform
+*                fpOut - FILE pointer to file to write transformed output
 *                mtf - Set to TRUE if move to front coding should be
 *                      applied.
 *   Effects    : A Burrows-Wheeler transformation (and possibly move to
@@ -175,14 +175,19 @@ int ComparePresorted(const void *s1, const void *s2)
 *                the transformation are written to outFile.
 *   Returned   : TRUE for success, otherwise FALSE.
 ***************************************************************************/
-int BWXformFile(char *inFile, char *outFile, char mtf)
+int BWXform(FILE *fpIn, FILE *fpOut, char mtf)
 {
     unsigned int i, j, k;
-    FILE *fpIn, *fpOut;
     unsigned int *rotationIdx;      /* index of first char in rotation */
     unsigned int *v;                /* index of radix sorted charaters */
     int s0Idx;                      /* index of S0 in rotations (I) */
     unsigned char *last;            /* last characters from sorted rotations */
+
+    if ((NULL == fpIn) || (NULL == fpOut))
+    {
+        fprintf(stderr, "Invalid File Pointer Arguments\n");
+        return FALSE;
+    }
 
     /***********************************************************************
     * BLOCK_SIZE arrays are allocated on the heap, because gcc generates
@@ -214,27 +219,6 @@ int BWXformFile(char *inFile, char *outFile, char mtf)
         free(rotationIdx);
         free(v);
         return FALSE;
-    }
-
-    /* open input and output files */
-    if ((fpIn = fopen(inFile, "rb")) == NULL)
-    {
-        perror(inFile);
-        return FALSE;
-    }
-
-    if (outFile == NULL)
-    {
-        fpOut = stdout;
-    }
-    else
-    {
-        if ((fpOut = fopen(outFile, "wb")) == NULL)
-        {
-            fclose(fpIn);
-            perror(outFile);
-            return FALSE;
-        }
     }
 
     while((blockSize = fread(block, sizeof(unsigned char), BLOCK_SIZE, fpIn))
@@ -445,8 +429,8 @@ void DoMTF(unsigned char *last, int length)
 *                this function indicate corresponding variables, labels,
 *                and sections in "A Block-sorting Lossless Data Compression
 *                Algorithm" by M. Burrows and D.J. Wheeler.
-*   Parameters : inFile - Name of file to reverse transform
-*                outFile - Name of file to write reverse transformed
+*   Parameters : fpIn - FILE pointer to file to reverse transform
+*                fpOut - FILE pointer to file to write reverse transformed
 *                          output to
 *                mtf - Set to TRUE if move to front decoding should be
 *                      applied
@@ -455,15 +439,20 @@ void DoMTF(unsigned char *last, int length)
 *                of the reverse transformation are written to outFile.
 *   Returned   : TRUE for success, otherwise FALSE.
 ***************************************************************************/
-int BWReverseXformFile(char *inFile, char *outFile, char mtf)
+int BWReverseXform(FILE *fpIn, FILE *fpOut, char mtf)
 {
-    FILE *fpIn, *fpOut;
     unsigned int i, j, sum;
     int count[UCHAR_MAX + 1];   /* count[i] = # of chars in block <= i */
     int *pred;                  /* pred[i] = # of times block[i] appears in
                                    block[0 .. i - 1] */
     unsigned char *unrotated;   /* original block */
     int s0Idx;                  /* index of S0 in rotations (I) */
+
+    if ((NULL == fpIn) || (NULL == fpOut))
+    {
+        fprintf(stderr, "Invalid File Pointer Arguments\n");
+        return FALSE;
+    }
 
     /***********************************************************************
     * BLOCK_SIZE arrays are allocated on the heap, because gcc generates
@@ -485,27 +474,6 @@ int BWReverseXformFile(char *inFile, char *outFile, char mtf)
         perror("Allocating array to store unrotated block");
         free(pred);
         return FALSE;
-    }
-
-    /* open input and output files */
-    if ((fpIn = fopen(inFile, "rb")) == NULL)
-    {
-        perror(inFile);
-        return FALSE;
-    }
-
-    if (outFile == NULL)
-    {
-        fpOut = stdout;
-    }
-    else
-    {
-        if ((fpOut = fopen(outFile, "wb")) == NULL)
-        {
-            fclose(fpIn);
-            perror(outFile);
-            return FALSE;
-        }
     }
 
     while(fread(&s0Idx, sizeof(int), 1, fpIn) != 0)

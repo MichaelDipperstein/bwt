@@ -62,10 +62,10 @@
 /***************************************************************************
 *                               PROTOTYPES
 ***************************************************************************/
- /* Transform inFile */
-int BWXformFile(char *inFile, char *outFile, char mtf);
+ /* Transform fpIn save results to fpOut.  Use MTF if mtf is TRUE */
+int BWXform(FILE *fpIn, FILE *fpOut, char mtf);
 
-/* Reverse Transform inFile*/
-int BWReverseXformFile(char *inFile, char *outFile, char mtf);
+/* Reverse Transform fpIn  save results to fpOut.  Use MTF if mtf is TRUE */
+int BWReverseXform(FILE *fpIn, FILE *fpOut, char mtf);
 
 #endif  /* ndef _BWXFORM_H_ */

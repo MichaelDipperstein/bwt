@@ -77,7 +77,7 @@ char *RemovePath(char *fullPath);
 int main(int argc, char *argv[])
 {
     option_t *optList, *thisOpt;
-    char *inFile, *outFile; /* name of input & output files */
+    FILE *inFile, *outFile; /* pointer to input & output files */
     char encode;            /* encode/decode */
     char mtf;               /* perform move to front */
 
@@ -111,62 +111,58 @@ int main(int argc, char *argv[])
                 if (inFile != NULL)
                 {
                     fprintf(stderr, "Multiple input files not allowed.\n");
-                    free(inFile);
+                    fclose(inFile);
 
                     if (outFile != NULL)
                     {
-                        free(outFile);
+                        fclose(outFile);
                     }
 
                     FreeOptList(optList);
                     exit(EXIT_FAILURE);
                 }
-                else if ((inFile =
-                    (char *)malloc(strlen(thisOpt->argument) + 1)) == NULL)
+                else if ((inFile = fopen(thisOpt->argument, "rb")) == NULL)
                 {
-                    perror("Memory allocation");
+                    perror("Opening Input File");
 
                     if (outFile != NULL)
                     {
-                        free(outFile);
+                        fclose(outFile);
                     }
 
                     FreeOptList(optList);
                     exit(EXIT_FAILURE);
                 }
 
-                strcpy(inFile, thisOpt->argument);
                 break;
 
             case 'o':       /* output file name */
                 if (outFile != NULL)
                 {
                     fprintf(stderr, "Multiple output files not allowed.\n");
-                    free(outFile);
+                    fclose(outFile);
 
                     if (inFile != NULL)
                     {
-                        free(inFile);
+                        fclose(inFile);
                     }
 
                     FreeOptList(optList);
                     exit(EXIT_FAILURE);
                 }
-                else if ((outFile =
-                    (char *)malloc(strlen(thisOpt->argument) + 1)) == NULL)
+                else if ((outFile = fopen(thisOpt->argument, "wb")) == NULL)
                 {
-                    perror("Memory allocation");
+                    perror("Opening Output File");
 
                     if (inFile != NULL)
                     {
-                        free(inFile);
+                        fclose(inFile);
                     }
 
                     FreeOptList(optList);
                     exit(EXIT_FAILURE);
                 }
 
-                strcpy(outFile, thisOpt->argument);
                 break;
 
             case 'h':
@@ -218,15 +214,13 @@ int main(int argc, char *argv[])
     /* we have valid parameters encode or decode */
     if (encode)
     {
-        BWXformFile(inFile, outFile, mtf);
+        BWXform(inFile, outFile, mtf);
     }
     else
     {
-        BWReverseXformFile(inFile, outFile, mtf);
+        BWReverseXform(inFile, outFile, mtf);
     }
 
-    free(inFile);
-    free(outFile);
     return EXIT_SUCCESS;
 }
 

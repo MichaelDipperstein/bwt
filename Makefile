@@ -31,7 +31,7 @@ ifeq ($(OS),Windows)
 	DEL = del
 else	#assume Linux/Unix
 	EXE =
-	DEL = rm
+	DEL = rm -f
 endif
 
 all:		sample$(EXE)
