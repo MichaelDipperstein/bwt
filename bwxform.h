@@ -9,23 +9,9 @@
 *   Date    : August 20, 2004
 *
 ****************************************************************************
-*   UPDATES
-*
-*   $Id: bwxform.h,v 1.3 2007/09/17 13:21:19 michael Exp $
-*   $Log: bwxform.h,v $
-*   Revision 1.3  2007/09/17 13:21:19  michael
-*   Changes required for LGPL v3.
-*
-*   Revision 1.2  2005/05/02 13:35:49  michael
-*   Update e-mail address.
-*
-*   Revision 1.1.1.1  2004/08/23 04:34:18  michael
-*   Burrows-Wheeler Transform
-*
-****************************************************************************
 *
 * bwxform: An ANSI C Burrows-Wheeler Transform/Reverse Transform Routines
-* Copyright (C) 2004-2005, 2007 by
+* Copyright (C) 2004-2005, 2007, 2014 by
 * Michael Dipperstein (mdipper@alumni.engr.ucsb.edu)
 *
 * This file is part of the BWT library.

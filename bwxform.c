@@ -11,39 +11,9 @@
 *   Date    : August 20, 2004
 *
 ****************************************************************************
-*   UPDATES
-*
-*   $Id: bwxform.c,v 1.6 2007/09/17 13:21:19 michael Exp $
-*   $Log: bwxform.c,v $
-*   Revision 1.6  2007/09/17 13:21:19  michael
-*   Changes required for LGPL v3.
-*
-*   Revision 1.5  2005/11/03 15:01:46  michael
-*   Speed up block sorting using the algorithm suggested by the
-*   Burrows-Wheeler paper.  Radix sort all rotations by the first
-*   two charcters before employing quicksort.
-*
-*   Revision 1.4  2005/05/02 13:33:41  michael
-*   Allocate large arrays on heap instead of stack so that gcc builds code
-*   that can handle larger blocks.
-*
-*   Update e-mail address
-*
-*   Revision 1.3  2004/08/27 01:24:16  michael
-*   Write S[0] index (I) before transformed block to aviod having to
-*   find I in a partial block.
-*
-*   Revision 1.2  2004/08/26 06:16:08  michael
-*   Handle partial blocks without need to store block size.  Use size
-*   returned by fread() to indicate smaller than standard block.
-*
-*   Revision 1.1.1.1  2004/08/23 04:34:18  michael
-*   Burrows-Wheeler Transform
-*
-****************************************************************************
 *
 * bwxform: An ANSI C Burrows-Wheeler Transform/Reverse Transform Routines
-* Copyright (C) 2004-2005, 2007 by
+* Copyright (C) 2004-2005, 2007, 2014 by
 * Michael Dipperstein (mdipper@alumni.engr.ucsb.edu)
 *
 * This file is part of the BWT library.
@@ -93,10 +63,6 @@
 unsigned char block[BLOCK_SIZE];        /* block being (un)transformed */
 size_t blockSize;                       /* actual size of block */
 
-/* counters and offsets used for radix sorting with characters */
-unsigned int counters[256];
-unsigned int offsetTable[256];
-
 /***************************************************************************
 *                                 MACROS
 ***************************************************************************/
@@ -131,27 +97,47 @@ void UndoMTF(unsigned char *last, int length);
 ***************************************************************************/
 int ComparePresorted(const void *s1, const void *s2)
 {
-    int offset1, offset2;
+    unsigned int offset1, offset2;
     unsigned int i;
-    int result;
-
-    offset1 = *((int *)s1);
-    offset2 = *((int *)s2);
 
     /***********************************************************************
     * Compare 1 character at a time until there's difference or the end of
     * the block is reached.  Since we're only sorting strings that already
     * match at the first two characters, start with the third character.
     ***********************************************************************/
+    offset1 = *((unsigned int *)s1) + 2;
+    offset2 = *((unsigned int *)s2) + 2;
+
     for(i = 2; i < blockSize; i++)
     {
-        result = (int)block[Wrap((offset1 + i), blockSize)] -
-            (int)block[Wrap((offset2 + i), blockSize)];
+        unsigned char c1, c2;
 
-        if (result != 0)
+        /* ensure that offsets are properly bounded */
+        if (offset1 >= blockSize)
         {
-            return result;
+            offset1 -= blockSize;
         }
+
+        if (offset2 >= blockSize)
+        {
+            offset2 -= blockSize;
+        }
+
+        c1 = block[offset1];
+        c2 = block[offset2];
+
+        if (c1 > c2)
+        {
+            return 1;
+        }
+        else if (c2 > c1)
+        {
+            return -1;
+        }
+
+        /* strings match to here, try next character */
+        offset1++;
+        offset2++;
     }
 
     /* strings are identical */
@@ -182,6 +168,10 @@ int BWXform(FILE *fpIn, FILE *fpOut, char mtf)
     unsigned int *v;                /* index of radix sorted charaters */
     int s0Idx;                      /* index of S0 in rotations (I) */
     unsigned char *last;            /* last characters from sorted rotations */
+
+    /* counters and offsets used for radix sorting with characters */
+    unsigned int counters[256];
+    unsigned int offsetTable[256];
 
     if ((NULL == fpIn) || (NULL == fpOut))
     {
@@ -286,7 +276,7 @@ int BWXform(FILE *fpIn, FILE *fpOut, char mtf)
         {
             for (j = 0; (j <= UCHAR_MAX) && (k < (blockSize - 1)); j++)
             {
-                int first = k;
+                unsigned int first = k;
 
                 /* count strings starting with ij */
                 while ((i == block[rotationIdx[k]]) &&
@@ -342,8 +332,6 @@ int BWXform(FILE *fpIn, FILE *fpOut, char mtf)
     free(rotationIdx);
     free(v);
     free(last);
-    fclose(fpIn);
-    fclose(fpOut);
     return TRUE;
 }
 
@@ -374,7 +362,7 @@ void DoMTF(unsigned char *last, int length)
     * code that throws a Segmentation fault when the large arrays are
     * allocated on the stack.
     ***********************************************************************/
-    encoded = (unsigned char *)malloc(BLOCK_SIZE * sizeof(unsigned char));
+    encoded = (unsigned char *)malloc(length * sizeof(unsigned char));
 
     if (NULL == encoded)
     {
@@ -393,7 +381,7 @@ void DoMTF(unsigned char *last, int length)
     {
         /*******************************************************************
         * Find the character in the list of characters.  I do a sequential
-        * search because of move to front causes common characters to be
+        * search because move to front causes common characters to be
         * near the front of the list.
         *******************************************************************/
         for (j = 0; j <= UCHAR_MAX; j++)
@@ -407,10 +395,7 @@ void DoMTF(unsigned char *last, int length)
         }
 
         /* now move the current character to the front of the list */
-        for (; j > 0; j--)
-        {
-            list[j] = list[j - 1];
-        }
+        memmove(&(list[1]), list, j);
         list[0] = last[i];
     }
 
@@ -528,8 +513,6 @@ int BWReverseXform(FILE *fpIn, FILE *fpOut, char mtf)
     /* clean up */
     free(pred);
     free(unrotated);
-    fclose(fpIn);
-    fclose(fpOut);
     return TRUE;
 }
 
@@ -554,14 +537,14 @@ void UndoMTF(unsigned char *last, int length)
 {
     unsigned char list[UCHAR_MAX + 1];      /* list of characters (Y) */
     unsigned char *encoded;                 /* mtf encoded block (R) */
-    int i, j;
+    int i;
 
     /***********************************************************************
     * BLOCK_SIZE arrays are allocated on the heap, because gcc generates
     * code that throws a Segmentation fault when the large arrays are
     * allocated on the stack.
     ***********************************************************************/
-    encoded = (unsigned char *)malloc(BLOCK_SIZE * sizeof(unsigned char));
+    encoded = (unsigned char *)malloc(length * sizeof(unsigned char));
 
     if (NULL == encoded)
     {
@@ -585,10 +568,7 @@ void UndoMTF(unsigned char *last, int length)
         last[i] = list[encoded[i]];
 
         /* now move the current character to the front of the list */
-        for (j = encoded[i]; j > 0; j--)
-        {
-            list[j] = list[j - 1];
-        }
+        memmove(&(list[1]), list, encoded[i]);
         list[0] = last[i];
     }
 

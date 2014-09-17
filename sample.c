@@ -7,24 +7,9 @@
 *   Date    : August 20, 2004
 *
 ****************************************************************************
-*   UPDATES
-*
-*   $Id: sample.c,v 1.3 2007/09/17 13:21:48 michael Exp $
-*   $Log: sample.c,v $
-*   Revision 1.3  2007/09/17 13:21:48  michael
-*   Replace getopt with optlist.
-*   Changes required for LGPL v3.
-*
-*   Revision 1.2  2005/05/02 13:35:49  michael
-*   Update e-mail address.
-*
-*   Revision 1.1.1.1  2004/08/23 04:34:18  michael
-*   Burrows-Wheeler Transform
-*
-****************************************************************************
 *
 * SAMPLE: Sample usage of Burrows-Wheeler transform library
-* Copyright (C) 2004-2005, 2007 by
+* Copyright (C) 2004-2005, 2007, 2014 by
 * Michael Dipperstein (mdipper@alumni.engr.ucsb.edu)
 *
 * This file is part of the BWT library.
@@ -56,7 +41,7 @@
 /***************************************************************************
 *                               PROTOTYPES
 ***************************************************************************/
-char *RemovePath(char *fullPath);
+char *FindFileName(char *fullPath);
 
 /***************************************************************************
 *                                FUNCTIONS
@@ -167,7 +152,7 @@ int main(int argc, char *argv[])
 
             case 'h':
             case '?':
-                printf("Usage: %s <options>\n\n", RemovePath(argv[0]));
+                printf("Usage: %s <options>\n\n", FindFileName(argv[0]));
                 printf("options:\n");
                 printf("  -c : Encode input file to output file.\n");
                 printf("  -d : Decode input file to output file.\n");
@@ -175,7 +160,7 @@ int main(int argc, char *argv[])
                 printf("  -i <filename> : Name of input file.\n");
                 printf("  -o <filename> : Name of output file.\n");
                 printf("  -h | ?  : Print out command line options.\n\n");
-                printf("Default: %s -c\n", RemovePath(argv[0]));
+                printf("Default: %s -c\n", FindFileName(argv[0]));
                 FreeOptList(optList);
                 return(EXIT_SUCCESS);
         }
@@ -189,7 +174,7 @@ int main(int argc, char *argv[])
     if (inFile == NULL)
     {
         fprintf(stderr, "Input file must be provided\n");
-        fprintf(stderr, "Enter \"%s -?\" for help.\n", RemovePath(argv[0]));
+        fprintf(stderr, "Enter \"%s -?\" for help.\n", FindFileName(argv[0]));
 
         if (outFile != NULL)
         {
@@ -201,7 +186,7 @@ int main(int argc, char *argv[])
     else if (outFile == NULL)
     {
         fprintf(stderr, "Output file must be provided\n");
-        fprintf(stderr, "Enter \"%s -?\" for help.\n", RemovePath(argv[0]));
+        fprintf(stderr, "Enter \"%s -?\" for help.\n", FindFileName(argv[0]));
 
         if (inFile != NULL)
         {
@@ -221,38 +206,7 @@ int main(int argc, char *argv[])
         BWReverseXform(inFile, outFile, mtf);
     }
 
+    fclose(inFile);
+    fclose(outFile);
     return EXIT_SUCCESS;
-}
-
-/***************************************************************************
-*   Function   : RemovePath
-*   Description: This is function accepts a pointer to the name of a file
-*                along with path information and returns a pointer to the
-*                character that is not part of the path.
-*   Parameters : fullPath - pointer to an array of characters containing
-*                           a file name and possible path modifiers.
-*   Effects    : None
-*   Returned   : Returns a pointer to the first character after any path
-*                information.
-***************************************************************************/
-char *RemovePath(char *fullPath)
-{
-    int i;
-    char *start, *tmp;                          /* start of file name */
-    const char delim[3] = {'\\', '/', ':'};     /* path deliminators */
-
-    start = fullPath;
-
-    /* find the first character after all file path delimiters */
-    for (i = 0; i < 3; i++)
-    {
-        tmp = strrchr(start, delim[i]);
-
-        if (tmp != NULL)
-        {
-            start = tmp + 1;
-        }
-    }
-
-    return start;
 }

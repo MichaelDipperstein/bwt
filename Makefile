@@ -1,17 +1,6 @@
 ############################################################################
 # Makefile for Burrows-Wheeler transform library and sample program
 #
-#   $Id: Makefile,v 1.3 2007/09/17 13:21:19 michael Exp $
-#   $Log: Makefile,v $
-#   Revision 1.3  2007/09/17 13:21:19  michael
-#   Changes required for LGPL v3.
-#
-#   Revision 1.2  2007/07/16 02:08:37  michael
-#   Use -pedantic option when compiling.
-#
-#   Revision 1.1.1.1  2004/08/23 04:34:18  michael
-#   Burrows-Wheeler Transform
-#
 ############################################################################
 CC = gcc
 LD = gcc
