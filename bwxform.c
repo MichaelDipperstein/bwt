@@ -40,6 +40,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <string.h>
+#include <errno.h>
 #include "bwxform.h"
 
 /***************************************************************************
@@ -73,8 +74,8 @@ size_t blockSize;                       /* actual size of block */
 *                               PROTOTYPES
 ***************************************************************************/
 /* move to front functions */
-void DoMTF(unsigned char *last, int length);
-void UndoMTF(unsigned char *last, int length);
+int DoMTF(unsigned char *last, int length);
+int UndoMTF(unsigned char *last, int length);
 
 /***************************************************************************
 *                                FUNCTIONS
@@ -154,14 +155,14 @@ int ComparePresorted(const void *s1, const void *s2)
 *                Algorithm" by M. Burrows and D.J. Wheeler.
 *   Parameters : fpIn - FILE pointer to file to transform
 *                fpOut - FILE pointer to file to write transformed output
-*                mtf - Set to TRUE if move to front coding should be
-*                      applied.
+*                method - Set to XFORM_WITH_MTF if move to front coding
+*                      should be applied.
 *   Effects    : A Burrows-Wheeler transformation (and possibly move to
 *                front encoding) is applied to inFile.   The results of
 *                the transformation are written to outFile.
-*   Returned   : TRUE for success, otherwise FALSE.
+*   Returned   : Zero for success, otherwise non-zero.
 ***************************************************************************/
-int BWXform(FILE *fpIn, FILE *fpOut, char mtf)
+int BWXform(FILE *fpIn, FILE *fpOut, xform_t method)
 {
     unsigned int i, j, k;
     unsigned int *rotationIdx;      /* index of first char in rotation */
@@ -176,7 +177,7 @@ int BWXform(FILE *fpIn, FILE *fpOut, char mtf)
     if ((NULL == fpIn) || (NULL == fpOut))
     {
         fprintf(stderr, "Invalid File Pointer Arguments\n");
-        return FALSE;
+        return -1;
     }
 
     /***********************************************************************
@@ -189,7 +190,7 @@ int BWXform(FILE *fpIn, FILE *fpOut, char mtf)
     if (NULL == rotationIdx)
     {
         perror("Allocating array of rotation indices");
-        return FALSE;
+        return errno;
     }
 
     v = (unsigned int *)malloc(BLOCK_SIZE * sizeof(unsigned int));
@@ -198,7 +199,7 @@ int BWXform(FILE *fpIn, FILE *fpOut, char mtf)
     {
         perror("Allocating array of sort indices");
         free(rotationIdx);
-        return FALSE;
+        return errno;
     }
 
     last = (unsigned char *)malloc(BLOCK_SIZE * sizeof(unsigned char));
@@ -208,7 +209,7 @@ int BWXform(FILE *fpIn, FILE *fpOut, char mtf)
         perror("Allocating array of last characters");
         free(rotationIdx);
         free(v);
-        return FALSE;
+        return errno;
     }
 
     while((blockSize = fread(block, sizeof(unsigned char), BLOCK_SIZE, fpIn))
@@ -316,9 +317,19 @@ int BWXform(FILE *fpIn, FILE *fpOut, char mtf)
             }
         }
 
-        if (mtf)
+        if (XFORM_WITH_MTF == method)
         {
-            DoMTF(last, blockSize);
+            int ret;
+
+            ret = DoMTF(last, blockSize);
+
+            if (ret)
+            {
+                free(rotationIdx);
+                free(v);
+                free(last);
+                return errno;
+            }
         }
 
         /* write index of end of unrotated string (I) */
@@ -332,7 +343,7 @@ int BWXform(FILE *fpIn, FILE *fpOut, char mtf)
     free(rotationIdx);
     free(v);
     free(last);
-    return TRUE;
+    return 0;
 }
 
 /***************************************************************************
@@ -349,9 +360,9 @@ int BWXform(FILE *fpIn, FILE *fpOut, char mtf)
 *   Effects    : Move to front encoding is applied on an array of last
 *                characters.  The results of the encoding replace the data
 *                that was stored in last.
-*   Returned   : NONE
+*   Returned   : Zero for success, otherwise non-zero.
 ***************************************************************************/
-void DoMTF(unsigned char *last, int length)
+int DoMTF(unsigned char *last, int length)
 {
     unsigned char list[UCHAR_MAX + 1];      /* list of characters (Y) */
     unsigned char *encoded;                 /* mtf encoded block (R) */
@@ -367,7 +378,7 @@ void DoMTF(unsigned char *last, int length)
     if (NULL == encoded)
     {
         perror("Allocating array to store MTF encoding");
-        return;
+        return errno;
     }
 
     /* start with alphabetically sorted list of characters */
@@ -403,7 +414,7 @@ void DoMTF(unsigned char *last, int length)
     memcpy((void *)last, (void *)encoded, sizeof(unsigned char) * length);
     free(encoded);
 
-    return;
+    return 0;
 }
 
 /***************************************************************************
@@ -417,14 +428,14 @@ void DoMTF(unsigned char *last, int length)
 *   Parameters : fpIn - FILE pointer to file to reverse transform
 *                fpOut - FILE pointer to file to write reverse transformed
 *                          output to
-*                mtf - Set to TRUE if move to front decoding should be
-*                      applied
+*                method - Set to XFORM_WITH_MTF if move to front coding
+*                      should be applied.
 *   Effects    : A Burrows-Wheeler reverse transformation (and possibly
 *                move to front encoding) is applied to inFile.   The results
 *                of the reverse transformation are written to outFile.
-*   Returned   : TRUE for success, otherwise FALSE.
+*   Returned   : Zero for success, otherwise non-zero.
 ***************************************************************************/
-int BWReverseXform(FILE *fpIn, FILE *fpOut, char mtf)
+int BWReverseXform(FILE *fpIn, FILE *fpOut, xform_t method)
 {
     unsigned int i, j, sum;
     int count[UCHAR_MAX + 1];   /* count[i] = # of chars in block <= i */
@@ -436,7 +447,7 @@ int BWReverseXform(FILE *fpIn, FILE *fpOut, char mtf)
     if ((NULL == fpIn) || (NULL == fpOut))
     {
         fprintf(stderr, "Invalid File Pointer Arguments\n");
-        return FALSE;
+        return -1;
     }
 
     /***********************************************************************
@@ -448,8 +459,8 @@ int BWReverseXform(FILE *fpIn, FILE *fpOut, char mtf)
 
     if (NULL == pred)
     {
-        perror("Allocating array of matching predicessors");
-        return FALSE;
+        perror("Allocating array of matching predecessors");
+        return errno;
     }
 
     unrotated = (unsigned char *)malloc(BLOCK_SIZE * sizeof(unsigned char));
@@ -458,16 +469,25 @@ int BWReverseXform(FILE *fpIn, FILE *fpOut, char mtf)
     {
         perror("Allocating array to store unrotated block");
         free(pred);
-        return FALSE;
+        return errno;
     }
 
     while(fread(&s0Idx, sizeof(int), 1, fpIn) != 0)
     {
         blockSize = fread(block, sizeof(unsigned char), BLOCK_SIZE, fpIn);
 
-        if(mtf)
+        if (XFORM_WITH_MTF == method)
         {
-            UndoMTF(block, blockSize);
+            int ret;
+
+            ret = UndoMTF(block, blockSize);
+
+            if (ret)
+            {
+                free(pred);
+                free(unrotated);
+                return ret;
+            }
         }
 
         /* code based on pseudo code from section 4.2 (D1 and D2) follows */
@@ -513,7 +533,7 @@ int BWReverseXform(FILE *fpIn, FILE *fpOut, char mtf)
     /* clean up */
     free(pred);
     free(unrotated);
-    return TRUE;
+    return 0;
 }
 
 /***************************************************************************
@@ -531,9 +551,9 @@ int BWReverseXform(FILE *fpIn, FILE *fpOut, char mtf)
 *                characters.  The results of the reversal are stored in
 *                the array last (L), providing an array of last characters
 *                of sorted rotations.
-*   Returned   : NONE
+*   Returned   : Zero for success, otherwise non-zero.
 ***************************************************************************/
-void UndoMTF(unsigned char *last, int length)
+int UndoMTF(unsigned char *last, int length)
 {
     unsigned char list[UCHAR_MAX + 1];      /* list of characters (Y) */
     unsigned char *encoded;                 /* mtf encoded block (R) */
@@ -549,7 +569,7 @@ void UndoMTF(unsigned char *last, int length)
     if (NULL == encoded)
     {
         perror("Allocating array to store MTF encoding");
-        return;
+        return errno;
     }
 
     /* copy last into encoded */
@@ -573,5 +593,5 @@ void UndoMTF(unsigned char *last, int length)
     }
 
     free(encoded);
-    return;
+    return 0;
 }

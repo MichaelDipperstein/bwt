@@ -41,7 +41,6 @@
 /***************************************************************************
 *                               PROTOTYPES
 ***************************************************************************/
-char *FindFileName(char *fullPath);
 
 /***************************************************************************
 *                                FUNCTIONS
@@ -64,13 +63,13 @@ int main(int argc, char *argv[])
     option_t *optList, *thisOpt;
     FILE *inFile, *outFile; /* pointer to input & output files */
     char encode;            /* encode/decode */
-    char mtf;               /* perform move to front */
+    xform_t method;         /* perform move to front */
 
     /* initialize data */
     inFile = NULL;
     outFile = NULL;
-    encode = TRUE;
-    mtf = FALSE;
+    encode = 1;
+    method = XFORM_WITHOUT_MTF;
 
     /* parse command line */
     optList = GetOptList(argc, argv, "cdmi:o:h?");
@@ -81,15 +80,15 @@ int main(int argc, char *argv[])
         switch(thisOpt->option)
         {
             case 'c':       /* compression mode */
-                encode = TRUE;
+                encode = 1;
                 break;
 
             case 'd':       /* decompression mode */
-                encode = FALSE;
+                encode = 0;
                 break;
 
             case 'm':       /* perform move to front */
-                mtf = TRUE;
+                method = XFORM_WITH_MTF;
                 break;
 
             case 'i':       /* input file name */
@@ -199,11 +198,11 @@ int main(int argc, char *argv[])
     /* we have valid parameters encode or decode */
     if (encode)
     {
-        BWXform(inFile, outFile, mtf);
+        BWXform(inFile, outFile, method);
     }
     else
     {
-        BWReverseXform(inFile, outFile, mtf);
+        BWReverseXform(inFile, outFile, method);
     }
 
     fclose(inFile);

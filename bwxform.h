@@ -37,21 +37,23 @@
 /***************************************************************************
 *                                CONSTANTS
 ***************************************************************************/
-#ifndef FALSE
-#define FALSE       0
-#endif
-
-#ifndef TRUE
-#define TRUE        1
-#endif
+typedef enum
+{
+    XFORM_WITHOUT_MTF = 0,
+    XFORM_WITH_MTF = 1
+} xform_t;
 
 /***************************************************************************
 *                               PROTOTYPES
 ***************************************************************************/
- /* Transform fpIn save results to fpOut.  Use MTF if mtf is TRUE */
-int BWXform(FILE *fpIn, FILE *fpOut, char mtf);
 
-/* Reverse Transform fpIn  save results to fpOut.  Use MTF if mtf is TRUE */
-int BWReverseXform(FILE *fpIn, FILE *fpOut, char mtf);
+/***************************************************************************
+* Transform/Reverse Transform file stream fpIn writing results to fpOut.
+* Use method to indicate whether or not to use MTF.
+* Zero is returned on success.
+***************************************************************************/
+/* Transform/Reverse Tran fpIn save results to fpOut.  Use MTF if mtf is TRUE */
+int BWXform(FILE *fpIn, FILE *fpOut, xform_t method);
+int BWReverseXform(FILE *fpIn, FILE *fpOut, xform_t method);
 
 #endif  /* ndef _BWXFORM_H_ */
