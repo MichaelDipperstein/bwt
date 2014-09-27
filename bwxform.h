@@ -53,7 +53,7 @@ typedef enum
 * Zero is returned on success.
 ***************************************************************************/
 /* Transform/Reverse Tran fpIn save results to fpOut.  Use MTF if mtf is TRUE */
-int BWXform(FILE *fpIn, FILE *fpOut, xform_t method);
-int BWReverseXform(FILE *fpIn, FILE *fpOut, xform_t method);
+int BWXform(FILE *fpIn, FILE *fpOut, const xform_t method);
+int BWReverseXform(FILE *fpIn, FILE *fpOut, const xform_t method);
 
 #endif  /* ndef _BWXFORM_H_ */

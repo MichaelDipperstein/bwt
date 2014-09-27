@@ -61,8 +61,8 @@
 /***************************************************************************
 *                            GLOBAL VARIABLES
 ***************************************************************************/
-unsigned char block[BLOCK_SIZE];        /* block being (un)transformed */
-size_t blockSize;                       /* actual size of block */
+static unsigned char block[BLOCK_SIZE];     /* block being (un)transformed */
+static size_t blockSize;                    /* actual size of block */
 
 /***************************************************************************
 *                                 MACROS
@@ -74,8 +74,8 @@ size_t blockSize;                       /* actual size of block */
 *                               PROTOTYPES
 ***************************************************************************/
 /* move to front functions */
-int DoMTF(unsigned char *last, int length);
-int UndoMTF(unsigned char *last, int length);
+static int DoMTF(const unsigned char *const last, const int length);
+static int UndoMTF(unsigned char *const last, const int length);
 
 /***************************************************************************
 *                                FUNCTIONS
@@ -96,7 +96,7 @@ int UndoMTF(unsigned char *last, int length);
 *                0 if string s1 == string s2
 *                < 0 if string s1 < string s2
 ***************************************************************************/
-int ComparePresorted(const void *s1, const void *s2)
+static int ComparePresorted(const void *s1, const void *s2)
 {
     unsigned int offset1, offset2;
     unsigned int i;
@@ -162,7 +162,7 @@ int ComparePresorted(const void *s1, const void *s2)
 *                the transformation are written to outFile.
 *   Returned   : Zero for success, otherwise non-zero.
 ***************************************************************************/
-int BWXform(FILE *fpIn, FILE *fpOut, xform_t method)
+int BWXform(FILE *fpIn, FILE *fpOut, const xform_t method)
 {
     unsigned int i, j, k;
     unsigned int *rotationIdx;      /* index of first char in rotation */
@@ -362,7 +362,7 @@ int BWXform(FILE *fpIn, FILE *fpOut, xform_t method)
 *                that was stored in last.
 *   Returned   : Zero for success, otherwise non-zero.
 ***************************************************************************/
-int DoMTF(unsigned char *last, int length)
+static int DoMTF(const unsigned char *const last, const int length)
 {
     unsigned char list[UCHAR_MAX + 1];      /* list of characters (Y) */
     unsigned char *encoded;                 /* mtf encoded block (R) */
@@ -435,7 +435,7 @@ int DoMTF(unsigned char *last, int length)
 *                of the reverse transformation are written to outFile.
 *   Returned   : Zero for success, otherwise non-zero.
 ***************************************************************************/
-int BWReverseXform(FILE *fpIn, FILE *fpOut, xform_t method)
+int BWReverseXform(FILE *fpIn, FILE *fpOut, const xform_t method)
 {
     unsigned int i, j, sum;
     int count[UCHAR_MAX + 1];   /* count[i] = # of chars in block <= i */
@@ -553,7 +553,7 @@ int BWReverseXform(FILE *fpIn, FILE *fpOut, xform_t method)
 *                of sorted rotations.
 *   Returned   : Zero for success, otherwise non-zero.
 ***************************************************************************/
-int UndoMTF(unsigned char *last, int length)
+static int UndoMTF(unsigned char *const last, const int length)
 {
     unsigned char list[UCHAR_MAX + 1];      /* list of characters (Y) */
     unsigned char *encoded;                 /* mtf encoded block (R) */
