@@ -58,6 +58,32 @@ options:
                 will be used.  NOTE: Sending compressed output to stdout may
                 produce undesirable results.
 
+LIBRARY API
+-----------
+Transforming Data:
+int BWXform(FILE *fpIn, FILE *fpOut, const xform_t method);
+fpIn
+    The file stream to be transformed.  It must non-NULL and opened.
+fpOut
+    The file stream receiving the transformed data.  It must non-NULL and
+    opened.
+method
+    xform_t type value indicating whether indicate whether or not MTF is used.
+Return Value
+    Zero for success, non-zero for failure.
+
+Reverse Transforming Data:
+int BWXform(FILE *fpIn, FILE *fpOut, const xform_t method);
+fpIn
+    The file stream to be reverse transformed.  It must non-NULL and opened.
+fpOut
+    The file stream receiving the reverse transformed data.  It must non-NULL
+    and opened.
+method
+    xform_t type value indicating whether indicate whether or not MTF is used.
+Return Value
+    Zero for success, non-zero for failure.
+
 HISTORY
 -------
 08/20/04  - Initial Release
@@ -69,11 +95,15 @@ HISTORY
             Burrows and Wheeler paper.
 08/29/07  - Explicitly licensed under LGPL version 3.
           - Replaces getopt() with optlist library
+10/29/14  - Changed the API so that encode and decode routines accept opened
+            file streams instead of file names.
+          - Upgrade to latest Oplist library
+          - Tighter adherence to Michael Barr's "Top 10 Bug-Killing Coding
+            Standard Rules" (http://www.barrgroup.com/webinars/10rules).
 
 TODO
 ----
 - Use "known" efficient Move-To-Front algorithm
-- Integrate with compression algorithm
 - Investigate suffix tree based sorting solutions
   - There are several papers claiming speed improvements
 
