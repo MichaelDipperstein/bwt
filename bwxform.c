@@ -158,8 +158,8 @@ static int ComparePresorted(const void *s1, const void *s2)
 *                method - Set to XFORM_WITH_MTF if move to front coding
 *                      should be applied.
 *   Effects    : A Burrows-Wheeler transformation (and possibly move to
-*                front encoding) is applied to inFile.   The results of
-*                the transformation are written to outFile.
+*                front encoding) is applied to fpIn.   The results of
+*                the transformation are written to fpOut.
 *   Returned   : Zero for success, otherwise non-zero.
 ***************************************************************************/
 int BWXform(FILE *fpIn, FILE *fpOut, const xform_t method)
@@ -431,8 +431,8 @@ static int DoMTF(const unsigned char *const last, const int length)
 *                method - Set to XFORM_WITH_MTF if move to front coding
 *                      should be applied.
 *   Effects    : A Burrows-Wheeler reverse transformation (and possibly
-*                move to front encoding) is applied to inFile.   The results
-*                of the reverse transformation are written to outFile.
+*                move to front encoding) is applied to fpIn.   The results
+*                of the reverse transformation are written to fpOut.
 *   Returned   : Zero for success, otherwise non-zero.
 ***************************************************************************/
 int BWReverseXform(FILE *fpIn, FILE *fpOut, const xform_t method)
