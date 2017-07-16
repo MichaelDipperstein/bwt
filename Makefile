@@ -8,7 +8,7 @@ CFLAGS = -O2 -Wall -Wextra -pedantic -ansi -c
 LDFLAGS = -O2 -o
 
 # libraries
-LIBS = -L. -lbwt -loptlist
+LIBS = -L. -Loptlist -lbwt -loptlist
 
 # Treat NT and non-NT windows the same
 ifeq ($(OS),Windows_NT)
@@ -25,10 +25,10 @@ endif
 
 all:		sample$(EXE)
 
-sample$(EXE):	sample.o libbwt.a liboptlist.a
+sample$(EXE):	sample.o libbwt.a  optlist/liboptlist.a
 		$(LD) $< $(LIBS) $(LDFLAGS) $@
 
-sample.o:	sample.c bwxform.h optlist.h
+sample.o:	sample.c bwxform.h optlist/optlist.h
 		$(CC) $(CFLAGS) $<
 
 libbwt.a:	bwxform.o
@@ -38,14 +38,11 @@ libbwt.a:	bwxform.o
 bwxform.o:	bwxform.c bwxform.h
 		$(CC) $(CFLAGS) $<
 
-liboptlist.a:	optlist.o
-		ar crv liboptlist.a optlist.o
-		ranlib liboptlist.a
-
-optlist.o:	optlist.c optlist.h
-		$(CC) $(CFLAGS) $<
+optlist/liboptlist.a:
+		cd optlist && $(MAKE) liboptlist.a
 
 clean:
 		$(DEL) *.o
 		$(DEL) *.a
 		$(DEL) sample$(EXE)
+		cd optlist && $(MAKE) clean
