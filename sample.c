@@ -10,7 +10,7 @@
 *
 * SAMPLE: Sample usage of Burrows-Wheeler transform library
 * Copyright (C) 2004-2005, 2007, 2014, 2017 by
-* Michael Dipperstein (mdipper@alumni.engr.ucsb.edu)
+* Michael Dipperstein (mdipperstein@gmail.com)
 *
 * This file is part of the BWT library.
 *

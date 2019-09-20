@@ -27,6 +27,11 @@ BUILDING
 To build these files with GNU make and gcc, simply enter "make" from the
 command line.  The executable will be named sample (or sample.exe).
 
+GIT NOTE: Updates to the subtree optlist don't get pulled by "git pull"
+Use the following commands to pull their updates:
+git subtree pull --prefix optlist https://github.com/MichaelDipperstein/optlist.git master --squash
+
+
 USAGE
 -----
 Usage: sample <options>
@@ -100,6 +105,8 @@ HISTORY
             Standard Rules" (http://www.barrgroup.com/webinars/10rules).
 07/15/17  - Directory stucture changes for ease of use with GitHub
           - Included a test script that I've always used to test things
+09/19/19  - Update e-mail address
+          - pull the latest optlist
 
 TODO
 ----
@@ -109,5 +116,5 @@ TODO
 
 AUTHOR
 ------
-Michael Dipperstein (mdipper@alumni.engr.ucsb.edu)
-http://michael.dipperstein.com
+Michael Dipperstein (mdipperstein@gmail.com)
+https://michaeldipperstein.github.io/
